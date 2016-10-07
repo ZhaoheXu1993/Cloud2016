@@ -94,7 +94,7 @@ def main(input_path, output_path):
                     if scan == 0:
                         radial_velocity = data_set.variables['RadialVelocity'][scan][radial][gate]
                     elif scan == 1:
-                        radial_velocity = data_set.variables['RadialVelocity_HI'][scan][radial][gate]
+                        radial_velocity = data_set.variables['RadialVelocity_HI'][scan - 1][radial][gate]
                     else:
                         radial_velocity = data_set.variables['RadialVelocity'][scan - 1][radial][gate]
                     coordinates[point] = {"Reflectivity": data_set.variables['Reflectivity'][scan][radial][gate],
