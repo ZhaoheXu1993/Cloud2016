@@ -11,13 +11,21 @@ vcp_dict = {11: (0.5, 1.5, 2.4, 3.4, 4.3, 5.3, 6.2, 7.5, 8.7, 10.0, 12.0, 14.0, 
             221: (0.5, 1.5, 2.4, 3.4, 4.3, 6.0, 9.9, 14.6, 19.5)}
 
 
-def invalid_data(data_set, scan, radial, gate):
-    return data_set.variables['Reflectivity'][scan][radial].mask[gate] or \
-           data_set.variables['RadialVelocity'][scan][radial].mask[gate] or \
-           data_set.variables['DifferentialReflectivity'][scan][radial].mask[gate] or \
-           data_set.variables['SpectrumWidth'][scan][radial].mask[gate] or \
-           data_set.variables['CorrelationCoefficient'][scan][radial].mask[gate] or \
-           data_set.variables['DifferentialPhase'][scan][radial].mask[gate]
+def invalid_data(data_set, scan, radial, gate, is_v):
+    if is_v:
+        return data_set.variables['Reflectivity'][scan][radial].mask[gate] or \
+               data_set.variables['RadialVelocity'][scan][radial].mask[gate] or \
+               data_set.variables['DifferentialReflectivity'][scan][radial].mask[gate] or \
+               data_set.variables['SpectrumWidth'][scan][radial].mask[gate] or \
+               data_set.variables['CorrelationCoefficient'][scan][radial].mask[gate] or \
+               data_set.variables['DifferentialPhase'][scan][radial].mask[gate]
+    else:
+        return data_set.variables['Reflectivity'][scan][radial].mask[gate] or \
+               data_set.variables['RadialVelocity_HI'][scan][radial].mask[gate] or \
+               data_set.variables['DifferentialReflectivity'][scan][radial].mask[gate] or \
+               data_set.variables['SpectrumWidth'][scan][radial].mask[gate] or \
+               data_set.variables['CorrelationCoefficient'][scan][radial].mask[gate] or \
+               data_set.variables['DifferentialPhase'][scan][radial].mask[gate]
 
 
 def output2file(path, coordinate):
@@ -67,17 +75,22 @@ def main(input_path, output_path):
         return
 
     # data process
-    for scan in range(scan_size):
-        print "Scan: ", scan
+    for scan in range(3):
+        # print "Scan: ", scan
 
-        for radial in range(radial_size):
-            print "Radial: ", radial
+        for radial in range(2):
+            # print "Radial: ", radial
 
-            for gate in range(920):
-                print "Gate: ", gate
-
-                if invalid_data(data_set, scan, radial, gate):
-                    continue
+            for gate in range(9):
+                if scan == 0:
+                    if invalid_data(data_set, scan, radial, gate, True):
+                        continue
+                elif scan == 1:
+                    if invalid_data(data_set, scan - 1, radial, gate, False):
+                        continue
+                else:
+                    if invalid_data(data_set, scan - 1, radial, gate, True):
+                        continue
                 _date = num2date(data_set.variables['timeR'][scan][radial], time_units)
                 timeR = time.mktime(_date.timetuple())
                 elevation = elevation_set[scan]
