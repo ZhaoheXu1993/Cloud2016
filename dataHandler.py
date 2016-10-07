@@ -11,19 +11,6 @@ vcp_dict = {11: (0.5, 1.5, 2.4, 3.4, 4.3, 5.3, 6.2, 7.5, 8.7, 10.0, 12.0, 14.0, 
             221: (0.5, 1.5, 2.4, 3.4, 4.3, 6.0, 9.9, 14.6, 19.5)}
 
 
-def combine_scanV_HI(data_set):
-    if not data_set.dimensions['scanV_HI'] or data_set.dimensions['scanV_HI'].size <= 0:
-        return
-
-
-
-
-
-def preprocess_data(data_set):
-    combine_scanV_HI(data_set)
-    return
-
-
 def invalid_data(data_set, scan, radial, gate):
     return data_set.variables['Reflectivity'][scan][radial].mask[gate] or \
            data_set.variables['RadialVelocity'][scan][radial].mask[gate] or \
@@ -33,42 +20,97 @@ def invalid_data(data_set, scan, radial, gate):
            data_set.variables['DifferentialPhase'][scan][radial].mask[gate]
 
 
-def main(file_path):
-    data_set = Dataset(file_path)
+def output2file(path, coordinate):
 
+    print "start output..."
+
+    f = open(path, 'w')
+
+    for point, attri in coordinate.iteritems():
+        f.write(str(point))
+        f.write(' ')
+        for variable, value in attri.iteritems():
+            f.write(variable)
+            f.write(':')
+            f.write(str(value))
+            f.write(' ')
+        f.write('\n')
+
+    f.close()
+
+    print "finish output"
+
+    return
+
+
+def main(input_path, output_path):
+    # data from netcdf file
+    data_set = Dataset(input_path, "a")
+
+    # get VCR type
     elevation_set = vcp_dict[data_set.VolumeCoveragePattern]
+
+    # get time unit
     time_units = "milli" + data_set.variables['timeR'].units[1:]
 
-    preprocess_data(data_set)
-
+    # build a 4-D coordinates
     coordinates = {}
 
-    for scan in range(len(data_set.dimensions['scanR'])):
-        for radial in range(len(data_set.dimensions['radialR'])):
-            for gate in range(len(data_set.dimensions['gateR'])):
+    # data size
+    scan_size = len(data_set.dimensions['scanR'])
+    radial_size = len(data_set.dimensions['radialR'])
+    # gate_size = len(data_set.dimensions['gateR'])
+
+    if scan_size != 9:
+        return
+    if radial_size < 360 or radial_size > 720:
+        return
+
+    # data process
+    for scan in range(scan_size):
+        print "Scan: ", scan
+
+        for radial in range(radial_size):
+            print "Radial: ", radial
+
+            for gate in range(920):
+                print "Gate: ", gate
+
                 if invalid_data(data_set, scan, radial, gate):
                     continue
+                _date = num2date(data_set.variables['timeR'][scan][radial], time_units)
+                timeR = time.mktime(_date.timetuple())
+                elevation = elevation_set[scan]
+                if (radial_size / 360) == 1:
+                    azimuth = float(int(data_set.variables['azimuthR'][scan][radial]))
+                else:
+                    azimuth = float(int(data_set.variables['azimuthR'][scan][radial] * 2)) / 2
 
-                time = data_set.variables['timeR'][scan][radial]
-                elevation = data_set.variables['elevationR'][scan][radial]
-                azimuth = data_set.variables['azimuthR'][scan][radial]
-                distance = data_set.variables['distanceR'][gate]
+                distance = float(int(data_set.variables['distanceR'][gate] / 1000 * 4)) / 4
 
-                point = (avg_time, avg_elevation, avg_azimuth, avg_distance)
+                point = (timeR, elevation, azimuth, distance)
 
                 if point not in coordinates:
+                    if scan == 0:
+                        radial_velocity = data_set.variables['RadialVelocity'][scan][radial][gate]
+                    elif scan == 1:
+                        radial_velocity = data_set.variables['RadialVelocity_HI'][scan][radial][gate]
+                    else:
+                        radial_velocity = data_set.variables['RadialVelocity'][scan - 1][radial][gate]
                     coordinates[point] = {"Reflectivity": data_set.variables['Reflectivity'][scan][radial][gate],
-                                          "RadialVelocity": data_set.variables['RadialVelocity'][scan][radial][gate],
+                                          "RadialVelocity": radial_velocity,
                                           "DifferentialReflectivity": data_set.variables['DifferentialReflectivity'][scan][radial][gate],
                                           "SpectrumWidth": data_set.variables['SpectrumWidth'][scan][radial][gate],
                                           "CorrelationCoefficient": data_set.variables['CorrelationCoefficient'][scan][radial][gate],
                                           "DifferentialPhase": data_set.variables['DifferentialPhase'][scan][radial][gate]}
 
-                    print point, coordinates[point]
+                    # print point, coordinates[point]
 
-
+    output2file(output_path, coordinates)
+    return
 
 
 if __name__ == '__main__':
-    file_path = "/home/joexu/KDOX20121029_024440_V07.nc";
-    main(file_path)
+    in_path = "/home/joexu/copy.nc"
+    out_path = "/home/joexu/output.txt"
+    main(in_path, out_path)
