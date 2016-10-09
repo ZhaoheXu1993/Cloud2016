@@ -23,7 +23,7 @@ def invalid_data(data_set, scan, radial, gate, is_v):
         return data_set.variables['Reflectivity'][scan][radial].mask[gate] or \
                data_set.variables['RadialVelocity_HI'][scan][radial].mask[gate] or \
                data_set.variables['DifferentialReflectivity'][scan][radial].mask[gate] or \
-               data_set.variables['SpectrumWidth'][scan][radial].mask[gate] or \
+               data_set.variables['SpectrumWidth_HI'][scan][radial].mask[gate] or \
                data_set.variables['CorrelationCoefficient'][scan][radial].mask[gate] or \
                data_set.variables['DifferentialPhase'][scan][radial].mask[gate]
 
@@ -75,13 +75,13 @@ def main(input_path, output_path):
         return
 
     # data process
-    for scan in range(3):
+    for scan in range(scan_size):
         # print "Scan: ", scan
 
-        for radial in range(2):
+        for radial in range(radial_size):
             # print "Radial: ", radial
 
-            for gate in range(9):
+            for gate in range(920):
                 if scan == 0:
                     if invalid_data(data_set, scan, radial, gate, True):
                         continue
@@ -106,14 +106,17 @@ def main(input_path, output_path):
                 if point not in coordinates:
                     if scan == 0:
                         radial_velocity = data_set.variables['RadialVelocity'][scan][radial][gate]
+                        spectrum_width = data_set.variables['SpectrumWidth'][scan][radial][gate]
                     elif scan == 1:
                         radial_velocity = data_set.variables['RadialVelocity_HI'][scan - 1][radial][gate]
+                        spectrum_width = data_set.variables['SpectrumWidth_HI'][scan - 1][radial][gate]
                     else:
                         radial_velocity = data_set.variables['RadialVelocity'][scan - 1][radial][gate]
+                        spectrum_width = data_set.variables['SpectrumWidth'][scan - 1][radial][gate]
                     coordinates[point] = {"Reflectivity": data_set.variables['Reflectivity'][scan][radial][gate],
                                           "RadialVelocity": radial_velocity,
                                           "DifferentialReflectivity": data_set.variables['DifferentialReflectivity'][scan][radial][gate],
-                                          "SpectrumWidth": data_set.variables['SpectrumWidth'][scan][radial][gate],
+                                          "SpectrumWidth": spectrum_width,
                                           "CorrelationCoefficient": data_set.variables['CorrelationCoefficient'][scan][radial][gate],
                                           "DifferentialPhase": data_set.variables['DifferentialPhase'][scan][radial][gate]}
 
