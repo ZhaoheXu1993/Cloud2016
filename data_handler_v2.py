@@ -24,35 +24,36 @@ vcp_dict = {11: (0.5, 1.5, 2.4, 3.4, 4.3, 5.3, 6.2, 7.5, 8.7, 10.0, 12.0, 14.0, 
 radial_dimension_var = {"Reflectivity": "AzimuthR",
                         "RadialVelocity": "AzimuthV",
                         "SpectrumWidth": "AzimuthV",
-                        "DifferentialReflectivity": "AzimuthD",                                
+                        "DifferentialReflectivity": "AzimuthD",
                         "CorrelationCoefficient": "AzimuthC",
                         "DifferentialPhase": "AzimuthP"}
 
 hi_radial_dimension_var = { k + "_HI": v + "_HI" for k, v in radial_dimension_var.iteritems() }
 
 velocity_var_list = set("RadialVelocity", "SpectrumWidth", "RadialVelocity_HI", "SpectrumWidth_HI")
-        
+
 
 class RadarNetcdf(object):
-    
+
     def __init__(self, dataset):
         """
         :dataset: an opened object of `netCDF4.Dataset`
-        """       
+        """
         self.dataset = dataset
-        # Copy entire data from netCDF file to memory 
+        # Copy entire data from netCDF file to memory
         self.data_dict = {}
         for k, v in dataset.variables.iteritems():
-            # Dump to memory
-            if 'add_offset' in v.__dict__ and 'scale_factor' in v.__dict__:
-                self.data_dict[k] = v[:] * v.scale_factor + v.add_offset
+            # NOTE: Make corrections if we observe things
+            if 'add_offset' in v.__dict__ and 'scale_factor' in v.__dict__ and v._Unsigned:
+                v.set_auto_scale(False)
+                self.data_dict[k] = v[:].view('u1') * v.scale_factor + v.add_offset
             else:
                 self.data_dict[k] = v[:]
         # Output dictionary is contains K-V pairs to write in text format.
         self.output_dict = {}
         self.vcp_mode = vcp_dict[self.dataset.VolumeCoveragePattern]
-        
-        
+
+
     def sanity_check(self, dataset):
         """Check if this Level-II CF file is sane. Here are some strange examples:
 1. Varname_HI has azimuthal resolution of 1.0 deg -> merge to normal `varname`
@@ -63,7 +64,7 @@ class RadarNetcdf(object):
         # Check problem 1
         hi_res_vars = filter(lambda p: p.endswith("_HI"), dataset.variables.keys())
         for h in hi_res_vars:
-            var_azimuth = self.dataset.variables[hi_res_radial_dimension_var[h.replace()]]            
+            var_azimuth = self.dataset.variables[hi_res_radial_dimension_var[h.replace()]]
         pass
         # Check problem 2
         pass
@@ -72,27 +73,27 @@ class RadarNetcdf(object):
         # Check problem 4
         if False:  # TODO: check problem 4
             raise NotImplementedError("Sanity check 4 not implemented")
-    
+
     def mask_data(self):
-        # Create a mask to remove all invalid data from reflectivity scan. 
+        # Create a mask to remove all invalid data from reflectivity scan.
         total_mask = reduce(numpy.ma.logical_or, tuple([v.mask for k, v in self.data_dict.iteritems if k not in velocity_var_list]))
         # Update mask
         for v in self.data_dict.values():
             v.mask = total_mask
-        
+
     def match_azimuth(self):
         """If reflectivity and velocity are not scanned at same time, it is possible their azimuth is not match, thus we need sync them"""
-        for i in len(self.vcp_mode):        
+        for i in len(self.vcp_mode):
             azR = self.data_dict['azimuthR']
-        
-        
+
+
     def dump_to_dict():
-        
-        
-    
+
+
+
     def output2file(self, path, coordinate):
-        print "start output..."    
-        f = open(path, 'w')    
+        print "start output..."
+        f = open(path, 'w')
         for point, attri in coordinate.iteritems():
             f.write(str(point))
             f.write(' ')
@@ -101,9 +102,9 @@ class RadarNetcdf(object):
                 f.write(':')
                 f.write(str(value))
                 f.write(' ')
-            f.write('\n')    
-        f.close()    
+            f.write('\n')
+        f.close()
         print "finish output"
-        
 
- 
+
+
