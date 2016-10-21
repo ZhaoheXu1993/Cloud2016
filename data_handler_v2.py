@@ -53,7 +53,6 @@ class RadarNetcdf(object):
         self.output_dict = {}
         self.vcp_mode = vcp_dict[self.dataset.VolumeCoveragePattern]
 
-
     def sanity_check(self, dataset):
         """Check if this Level-II CF file is sane. Here are some strange examples:
 1. Varname_HI has azimuthal resolution of 1.0 deg -> merge to normal `varname`
@@ -62,9 +61,20 @@ class RadarNetcdf(object):
 4. Radial dimension is not 360 or 720 -> ???
 """
         # Check problem 1
-        hi_res_vars = filter(lambda p: p.endswith("_HI"), dataset.variables.keys())
-        for h in hi_res_vars:
-            var_azimuth = self.dataset.variables[hi_res_radial_dimension_var[h.replace()]]
+        # We must hard coded it. Let's from AzimuthV first
+        if 'azimuthV' in self.data_dict and 'azimuthV_HI' in self.data_dict:
+            # float azimuthV_HI(scanV_HI, radialV_HI)
+            first_elevation_v = self.data_dict['elevationV'][0,:]
+            first_elevation_v_hi = self.data_dict['elevationV_HI'][0,:]
+            # find the position to combine scanV and scanV_HI
+            p = numpy.searchsorted(first_scan_v, first_scan_v_hi)
+            # Then insert azimuthV_HI to azimuthV with axis of scanV or scanV_HI (axis=0)
+            self.data_dict['azimuthV'] = numpy.insert(self.data_dict['azimuthV'], p, self.data_dict['azimuthV_HI'], axis=0)
+            self.data_dict['timeV'] = numpy.insert(self.data_dict['timeV'], p, self.data_dict['timeV_HI'], axis=0)
+            self.data
+        else:
+            # This means only LOW or HIGH resolution data inside. We don't have to correct anything.
+            pass
         pass
         # Check problem 2
         pass
