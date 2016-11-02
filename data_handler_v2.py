@@ -4,12 +4,17 @@ from datetime import datetime, timedelta
 
 from collections import OrderedDict
 
+from functools import reduce
+
 import json
 
 import numpy
 import numpy.ma
 
+import netCDF4
 from netCDF4 import Dataset, num2date
+
+from typing import List, Dict, Tuple
 
 
 
@@ -35,27 +40,31 @@ velocity_var_list = set()
 
 class RadarNetcdf(object):
 
-    def __init__(self, dataset):
+    def __init__(self, dataset: Dataset):
         """
         :dataset: an opened object of `netCDF4.Dataset`
         """
         self.dataset = dataset
         # Copy entire data from netCDF file to memory
-        self.data_dict = {}
-        for k, v in dataset.variables.iteritems():
+        self.data_dict = {} # type: Dict[str, numpy.ma.MaskedArray]
+        for k, v in self.dataset.variables.iteritems():
             # NOTE: Make corrections if we observe things
-            if 'add_offset' in v.__dict__ and 'scale_factor' in v.__dict__ and v._Unsigned:
-                v.set_auto_scale(False)
-                # Dump out
-                _v = v[:]
-                _v1 = _v.data.view('u' + str(v.datatype)) * v.scale_factor + v.add_offset
-                self.data_dict[k] = numpy.ma.MaskedArray(_v1, _v.mask)
-            else:
-                self.data_dict[k] = v[:]
+            self.data_dict[k] = self.__fix_variable__(v)
         # Output dictionary is contains K-V pairs to write in text format.
         self.output_dict = {}
         self.vcp_mode = vcp_dict[self.dataset.VolumeCoveragePattern]
 
+    @staticmethod
+    def __fix_variable__(v: netCDF4.Variable) -> numpy.ma.MaskedArray:
+        """Fix wrong unsigned value"""
+        if 'add_offset' in v.__dict__ and 'scale_factor' in v.__dict__ and v._Unsigned:
+            v.set_auto_scale(False)
+            # Dump out
+            _v = v[:]
+            _v1 = _v.data.view('u' + str(v.datatype)) * v.scale_factor + v.add_offset
+            return numpy.ma.MaskedArray(_v1, _v.mask)
+        else:
+            return v[:]
 
     def sanity_check(self):
         """Check if this Level-II CF file is sane. Here are some strange examples:
@@ -79,14 +88,14 @@ class RadarNetcdf(object):
 
     def mask_data(self):
         # Create a mask to remove all invalid data from reflectivity scan.
-        total_mask = reduce(numpy.ma.logical_or, tuple([v.mask for k, v in self.data_dict.iteritems if k not in velocity_var_list]))
+        total_mask = reduce(numpy.ma.logical_or, tuple([v.mask for k, v in self.data_dict.iteritems() if k not in velocity_var_list]))
         # Update mask
         for v in self.data_dict.values():
             v.mask = total_mask
 
     def match_azimuth(self):
         """If reflectivity and velocity are not scanned at same time, it is possible their azimuth is not match, thus we need sync them"""
-        for i in len(self.vcp_mode):
+        for i in range(len(self.vcp_mode)):
             azR = self.data_dict['azimuthR']
 
 
@@ -95,7 +104,7 @@ class RadarNetcdf(object):
 
 
     def output2file(self, path, coordinate):
-        print "start output..."
+        print("start output...")
         f = open(path, 'w')
         for point, attri in coordinate.iteritems():
             f.write(str(point))
@@ -107,7 +116,7 @@ class RadarNetcdf(object):
                 f.write(' ')
             f.write('\n')
         f.close()
-        print "finish output"
+        print("finish output")
 
 
 if __name__ == "__main__":
