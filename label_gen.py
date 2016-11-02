@@ -1,6 +1,7 @@
 # coding=utf-8
 
 import os
+import sys
 import re
 from datetime import datetime
 
@@ -12,7 +13,12 @@ from numba import jit
 
 import netCDF4
 
-class Labeler():
+try:
+    from ckdtree import cKDTree
+except ImportError:
+    from scipy.spatial import cKDTree
+
+class PpiLabeler():
     
     def __init__(self, dataset_path: str, qc_dataset_path: str, elevation: float):
         
@@ -70,8 +76,36 @@ class Labeler():
                     starty = 0
         return reflect_array
 
+    def query2d(self, coordinate_2d: Tuple[float, float]) -> int:
+        """Give (a, r), tells out if this point is good (1), or bad (0)"""
+        raise NotImplementedError()
 
 
+class VolumeLabeler():
+
+    def __init__(self, refl_folder, refl_qc_folder):
+        self.refl_folder = refl_folder
+        self.refl_qc_folder = refl_qc_folder
+
+    def scan_elevation(self):
+        elevation1 = sorted(map(float, os.listdir(self.refl_folder)))
+        elevation_qc = sorted(map(float, os.listdir(self.refl_qc_folder)))
+        assert elevation1 == elevation_qc
+        self.elevation_list = elevation1
+
+    def scan_time(self):
+
+
+
+
+
+def main(argv: List[str]):
+
+    l = Labeler(argv[0], argv[1], float(argv[2]))
+    print(l.query(None, None))
+
+if __name__ == "__main__":
+    main(sys.argv[1:])
 
 
 
