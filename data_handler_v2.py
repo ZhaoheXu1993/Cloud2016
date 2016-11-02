@@ -62,28 +62,13 @@ class RadarNetcdf(object):
 """
         # Check problem 1
         # We must hard coded it. Let's from AzimuthV first
-        if 'azimuthV' in self.data_dict and 'azimuthV_HI' in self.data_dict:
-            # float azimuthV_HI(scanV_HI, radialV_HI)
-            first_elevation_v = self.data_dict['elevationV'][0,:]
-            first_elevation_v_hi = self.data_dict['elevationV_HI'][0,:]
-            # find the position to combine scanV and scanV_HI
-            p = numpy.searchsorted(first_scan_v, first_scan_v_hi)
-            # Then insert azimuthV_HI to azimuthV with axis of scanV or scanV_HI (axis=0)
-            self.data_dict['azimuthV'] = numpy.insert(self.data_dict['azimuthV'], p, self.data_dict['azimuthV_HI'], axis=0)
-            self.data_dict['timeV'] = numpy.insert(self.data_dict['timeV'], p, self.data_dict['timeV_HI'], axis=0)
-            self.data
-        else:
-            # This means only LOW or HIGH resolution data inside. We don't have to correct anything.
-            pass
-        pass
+        # We had corrected this issue using correct netcdf-java-lib.jar
         # Check problem 2
         pass
         # Check problem 3
-        pass
-        # Check problem 4
-        if False:  # TODO: check problem 4
-            raise NotImplementedError("Sanity check 4 not implemented")
 
+        # Check problem 4
+        # We had correct this issue by using correct netcdf-java-lib.jar
     def mask_data(self):
         # Create a mask to remove all invalid data from reflectivity scan.
         total_mask = reduce(numpy.ma.logical_or, tuple([v.mask for k, v in self.data_dict.iteritems if k not in velocity_var_list]))
