@@ -30,7 +30,7 @@ def invalid_data(data_set, scan, radial, gate, is_v):
 
 def output2file(path, coordinate):
 
-    print "start output..."
+    print("start output...")
 
     f = open(path, 'w')
 
