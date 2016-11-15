@@ -236,6 +236,8 @@ class RadarNetcdf(object):
 
         pass
 
+        # Check problem 4
+        # We had correct this issue by using correct netcdf-java-lib.jar
     def mask_data(self):
         # Create a mask to remove all invalid data from reflectivity scan.
         total_mask = reduce(numpy.ma.logical_or,
@@ -247,10 +249,10 @@ class RadarNetcdf(object):
     def output2file(self, path, coordinate):
         print("start output...")
         f = open(path, 'w')
-        for point, attri in coordinate.items():
+        for point, attr in coordinate.items():
             f.write(str(point))
             f.write(' ')
-            for variable, value in attri.items():
+            for variable, value in attr.items():
                 f.write(variable)
                 f.write(':')
                 f.write(str(value))
