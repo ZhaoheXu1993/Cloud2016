@@ -88,6 +88,7 @@ def fill_data_function(gate_array, azimuth_array, dump_array, elevation_index, s
 
 
 class RadarNetcdf(object):
+
     VcpTable = {
         11: (0.5, 1.5, 2.4, 3.4, 4.3, 5.3, 6.2, 7.5, 8.7, 10.0, 12.0, 14.0, 16.7, 19.5),
         211: (0.5, 1.5, 2.4, 3.4, 4.3, 5.3, 6.2, 7.5, 8.7, 10.0, 12.0, 14.0, 16.7, 19.5),
@@ -131,9 +132,21 @@ class RadarNetcdf(object):
             "CorrelationCoefficient": numpy.empty(self.array_shape, dtype='f4'),
             "DifferentialPhase": numpy.empty(self.array_shape, dtype='f4')
         }  # type: Dict[str, numpy.ndarray]
-
+        # Fill data
         for p in self.data_dict.values():
             p.fill(-99990.0)
+
+        self.extended_data_dict = {
+            "EchoTop5Z": numpy.empty(self.array_shape, dtype='f4'),
+            "EchoTop10Z": numpy.empty(self.array_shape, dtype='f4'),
+            "EchoTop20Z": numpy.empty(self.array_shape, dtype='f4'),
+            "Reflectivity_Avg3x3": numpy.empty(self.array_shape, dtype='f4'),
+            "Reflectivity_RefStd3x3": numpy.empty(self.array_shape, dtype='f4'),
+            "Reflectivity_RefAvg1x5": numpy.empty(self.array_shape, dtype='f4'),
+            "Reflectivity_RefStd1x5": numpy.empty(self.array_shape, dtype='f4')
+        }
+
+
 
         # Filling status, ensure everything is filled!
         self.filling_table = numpy.zeros((len(self.vcp_mode), len(self.data_dict)), dtype='b1')
@@ -192,52 +205,72 @@ class RadarNetcdf(object):
     def first_pass(self):
         pass
 
+    @jit
+    def __fill_data_internal(self, i, id_var, var_names, var_suffix):
+        mode = "_HI" if id_var + "_HI" in i else ""
+        elevation = i[id_var + mode].mean()
+        elevation_index = find_elevation_index(self.vcp_mode, elevation)
+        logging.info("%f - %d" % (elevation, elevation_index))
+        for j, s in zip(var_names, var_suffix):
+            logging.debug("Dumping variable: %s - %s" % (j, s))
+            fill_data_function(i[j + mode], i["azimuth" + s + mode], self.data_dict[j], elevation_index,
+                               self.beams_count, self.gates_count)
+
     def fill_data(self, *args, **kwargs):
 
         for i in self.time_data_dict.values():
             # There are several cases:
             # Case 1: CS case, only reflectivity related variable will be here
             if 'elevationV' not in i and 'elevationV_HI' not in i:
-                mode = "_HI" if 'elevationR_HI' in i else ""
-                elevation = i["elevationR" + mode].mean()
-                elevation_index = find_elevation_index(self.vcp_mode, elevation)
-                logging.info("%f - %d" % (elevation, elevation_index))
-                for j, s in zip(self.ref_var_names, self.ref_var_suffix):
-                    logging.debug("Dumping variable: %s - %s" % (j, s))
-                    fill_data_function(i[j + mode], i["azimuth" + s + mode], self.data_dict[j], elevation_index,
-                                    self.beams_count, self.gates_count)
-                    pass
+                try:
+                    self.__fill_data_internal(i, "elevationR", self.ref_var_names, self.ref_var_suffix)
+                except:
+                    logging.warning("Failed to run JITed fill_data function: CS")
+                    mode = "_HI" if 'elevationR_HI' in i else ""
+                    elevation = i["elevationR" + mode].mean()
+                    elevation_index = find_elevation_index(self.vcp_mode, elevation)
+                    logging.info("%f - %d" % (elevation, elevation_index))
+                    for j, s in zip(self.ref_var_names, self.ref_var_suffix):
+                        logging.debug("Dumping variable: %s - %s" % (j, s))
+                        fill_data_function(i[j + mode], i["azimuth" + s + mode], self.data_dict[j], elevation_index,
+                                        self.beams_count, self.gates_count)
+                        pass
             # CD pulses: we only use Doppler Velocity
             elif (('elevationV' in i or 'elevationV_HI' in i) and ('elevationR' not in i and 'elevationR_HI' not in i)) \
                     or (('elevationV' in i or 'elevationV_HI' in i) and
                             ('elevationR' in i or 'elevationR_HI' in i) and
                             ('DifferentialReflectivity' not in i and 'DifferentialReflectivity' not in i)
                         ):
-                mode = "_HI" if 'elevationV_HI' in i else ""
-                elevation = i["elevationV" + mode].mean()
-                elevation_index = find_elevation_index(self.vcp_mode, elevation)
-                logging.info("%f - %d" % (elevation, elevation_index))
-                for j, s in zip(self.vel_var_names, self.vel_var_suffix):
-                    logging.debug("Dumping variable: %s - %s" % (j, s))
-                    fill_data_function(i[j + mode], i["azimuth" + s + mode], self.data_dict[j], elevation_index,
-                                    self.beams_count, self.gates_count)
-                    pass
+                try:
+                    self.__fill_data_internal(i, "elevationV", self.vel_var_names, self.vel_var_suffix)
+                except:
+                    logging.warning("Failed to run JITed fill_data function: CD")
+                    mode = "_HI" if 'elevationV_HI' in i else ""
+                    elevation = i["elevationV" + mode].mean()
+                    elevation_index = find_elevation_index(self.vcp_mode, elevation)
+                    logging.info("%f - %d" % (elevation, elevation_index))
+                    for j, s in zip(self.vel_var_names, self.vel_var_suffix):
+                        logging.debug("Dumping variable: %s - %s" % (j, s))
+                        fill_data_function(i[j + mode], i["azimuth" + s + mode], self.data_dict[j], elevation_index,
+                                        self.beams_count, self.gates_count)
+                        pass
             # Normal case, all variables will be gathered in one scan
             else:
-                mode = "_HI" if 'elevationR_HI' in i else ""
-                elevation = i["elevationR" + mode].mean()
-                elevation_index = find_elevation_index(self.vcp_mode, elevation)
-                logging.info("%f - %d" % (elevation, elevation_index))
-                for j, s in zip(self.all_var_names, self.all_var_suffix):
-                    logging.debug("Dumping variable: %s - %s" % (j, s))
-                    fill_data_function(i[j + mode], i["azimuth" + s + mode], self.data_dict[j], elevation_index,
-                                    self.beams_count, self.gates_count)
-                    pass
-
+                try:
+                    self.__fill_data_internal(i, "elevationR", self.all_var_names, self.all_var_suffix)
+                except:
+                    logging.warning("Failed to run JITed fill_data function: Mixed")
+                    mode = "_HI" if 'elevationR_HI' in i else ""
+                    elevation = i["elevationR" + mode].mean()
+                    elevation_index = find_elevation_index(self.vcp_mode, elevation)
+                    logging.info("%f - %d" % (elevation, elevation_index))
+                    for j, s in zip(self.all_var_names, self.all_var_suffix):
+                        logging.debug("Dumping variable: %s - %s" % (j, s))
+                        fill_data_function(i[j + mode], i["azimuth" + s + mode], self.data_dict[j], elevation_index,
+                                        self.beams_count, self.gates_count)
+                        pass
         pass
 
-        # Check problem 4
-        # We had correct this issue by using correct netcdf-java-lib.jar
     def mask_data(self):
         # Create a mask to remove all invalid data from reflectivity scan.
         total_mask = reduce(numpy.ma.logical_or,
