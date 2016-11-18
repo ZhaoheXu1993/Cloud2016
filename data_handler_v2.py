@@ -141,9 +141,11 @@ class RadarNetcdf(object):
             "EchoTop10Z": numpy.empty(self.array_shape, dtype='f4'),
             "EchoTop20Z": numpy.empty(self.array_shape, dtype='f4'),
             "Reflectivity_Avg3x3": numpy.empty(self.array_shape, dtype='f4'),
-            "Reflectivity_RefStd3x3": numpy.empty(self.array_shape, dtype='f4'),
-            "Reflectivity_RefAvg1x5": numpy.empty(self.array_shape, dtype='f4'),
-            "Reflectivity_RefStd1x5": numpy.empty(self.array_shape, dtype='f4')
+            "Reflectivity_Std3x3": numpy.empty(self.array_shape, dtype='f4'),
+            "Reflectivity_Avg1x5": numpy.empty(self.array_shape, dtype='f4'),
+            "Reflectivity_Std1x5": numpy.empty(self.array_shape, dtype='f4'),
+            "DifferentialReflectivity_": numpy.empty(self.array_shape, dtype='f4'),
+            ""
         }
 
 
