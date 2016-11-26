@@ -145,7 +145,7 @@ class RadarNetcdf(object):
             "Reflectivity_Avg1x5": numpy.empty(self.array_shape, dtype='f4'),
             "Reflectivity_Std1x5": numpy.empty(self.array_shape, dtype='f4'),
             "DifferentialReflectivity_": numpy.empty(self.array_shape, dtype='f4'),
-            ""
+            "": None
         }
 
 
