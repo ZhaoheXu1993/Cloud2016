@@ -1,0 +1,6 @@
+[submodule "src/main/java/alg/wind/nativelib"]
+	path = src/main/java/alg/wind/nativelib
+	url = https://github.com/striges/RadarComposite-wind-native
+[submodule "src/main/java/alg/wind/native"]
+	path = src/main/java/alg/wind/native
+	url = https://github.com/striges/RadarComposite-wind-native.git
